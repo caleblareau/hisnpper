@@ -1,0 +1,63 @@
+import os
+import subprocess
+import shutil
+import re
+import pysam
+
+from os.path import join
+
+configfile: config["cfp"]     
+script_dir = config["script_dir"]          
+name = config["name"] 
+outdir = config["output"] 
+haplotype_tag = config["haplotype_tag"] 
+
+# Determine .bam files to execute for fragment overlap analysis
+infile1 = outdir + "/.internal/chrs.txt"
+
+with open(infile1) as f:
+    chrs = f.readlines()
+
+chrs = [x.strip() for x in chrs] 
+chrStats = [outdir + '/temp/03_whitelist/' + x + "_stats.txt" for x in chrs] 
+whitelists1 = [outdir + '/temp/03_whitelist/whitelist_hap1_' + x + ".txt" for x in chrs] 
+whitelists2 = [outdir + '/temp/03_whitelist/whitelist_hap2_' + x + ".txt" for x in chrs] 
+
+rule all:
+	input:
+		wl1 = outdir + "/"+name+".whitelist1.txt",
+		wl2 = outdir + "/"+name+".whitelist2.txt"
+
+rule process_one_chromosome:
+	input:
+		snp = outdir + "/temp/01_split/SNPs_" + "{chr}" + ".tsv",
+		bam = outdir + "/temp/02_namesort/nameSort." + "{chr}" + ".bam",
+	output:
+		whitelist1 = outdir + '/temp/03_whitelist/whitelist_hap1_' + "{chr}" + ".txt",
+		whitelist2 = outdir + '/temp/03_whitelist/whitelist_hap2_' + "{chr}" + ".txt"
+	threads:
+		1
+	run:
+		chr = wildcards.chr
+		# Assign reads / run WASP
+		outfastq = outdir + '/temp/03_whitelist'
+		pycall1 = "python " + script_dir + "/python/assignReads.py --input " + input.bam + " -s " + input.snp + " -o " + outfastq
+		os.system(pycall1)
+
+
+# Final merge of everything
+rule final_merge:
+	input:
+		wls1 = whitelists1,
+		wls2 = whitelists2
+	output:
+		final_wl1 = outdir + "/"+name+".whitelist1.txt",
+		final_wl2 = outdir + "/"+name+".whitelist2.txt",
+		final_sumstats = outdir + "/"+name+".sumstats.tsv"
+	run:
+		os.system("cat " + " ".join(input.wls1) + " > " + output.final_wl1 )
+		os.system("cat " + " ".join(input.wls2) + " > " + output.final_wl2 )
+		statdir = outdir + '/temp/03_whitelist'
+		aaSS_R = script_dir + "/R/02_mungeQC.R"
+		r_call1 = " ".join(["Rscript", aaSS_R, output.final_sumstats, statdir])
+		os.system(r_call1)
