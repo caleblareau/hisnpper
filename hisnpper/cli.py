@@ -29,7 +29,7 @@ from ruamel.yaml.scalarstring import SingleQuotedScalarString as sqs
 @click.option('--output', '-o', default="annotateAlleles_out", help='Output directory for analysis; see documentation.')
 
 @click.option('--name', '-n', default="default", help='Name for all of the output files (default: uses the .bam prefix)')
-@click.option('--haplotype-tag', '-ht', default="GH", help='Two letter tag for bam file for phased reads')
+@click.option('--haplotype-tag', '-ht', default="HA", help='Two letter tag for bam file for phased reads')
 
 @click.option('--ncores', '-c', default=2, help='Number of cores to be used in analysis')
 @click.option('--keep-temp-files', '-z', is_flag=True, help='Keep all intermediate files.')
@@ -39,7 +39,7 @@ def main(input, snp_table, output,
 	ncores, keep_temp_files):
 	
 	"""
-	hisnpper: Annotate alleles with haplotypes \n
+	hisnpper: Annotate bam reads with alleles from haplotypes \n
 	Caleb Lareau, clareau <at> broadinstitute <dot> org \n
 	"""
 	
@@ -62,11 +62,11 @@ def main(input, snp_table, output,
 		ncores, keep_temp_files)
 	
 	# Make output folders
-	of = output; fin = of; temp = of + "/temp"; logs = of + "/logs"
+	of = output; fin = of; temp = of + "/temp"; 
 	temp_split = temp + "/01_split"; temp_namesort = temp + "/02_namesort"
-	temp_whitelist = temp + "/03_whitelist"
-	folders = [of, fin, temp, of + "/.internal", logs, logs + "/bwa", 
-			temp_split, temp_namesort, temp_whitelist,
+	temp_whitelist = temp + "/03_whitelist"; temp_annobam = temp + "/04_annobam"
+	folders = [of, fin, temp, of + "/.internal", 
+			temp_split, temp_namesort, temp_whitelist, temp_annobam,
 			of + "/.internal/parseltongue", of + "/.internal/samples"]
 	mkfolderout = [make_folder(x) for x in folders]
 	
@@ -103,7 +103,7 @@ def main(input, snp_table, output,
 	with open(y_s, 'w') as yaml_file:
 		yaml.dump(dict(p), yaml_file, default_flow_style=False, Dumper=yaml.RoundTripDumper)
 			
-	snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.snpAnnotate.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" -T'
+	snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.snpAnnotate.txt --cores '+str(ncores)+' --config cfp="' + y_s + '"'
 	os.system(snakecmd_chr)
 	
 	if keep_temp_files:
