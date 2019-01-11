@@ -1,0 +1,1 @@
+(samtools calmd mESCsF21-sample14.bam /data/aryee/caleb/mESC_allele/mm10-masked/genome.fa -e | head -1000 | awk '$5 > 20 {print $0}' | awk 'BEGIN {OFS = FS = "\t" } ; {n=split($10,reads,""); split($11,qual,""); for (i=1; i <= length($10); i++) { if(reads[i] != "="){ print $3, $4, i, qual[i], reads[i], $1}} }' > o )2> t
