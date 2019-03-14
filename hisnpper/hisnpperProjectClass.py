@@ -35,7 +35,9 @@ class hisnpperProject():
 		self.min_aq = str(min_aq)
 		self.ncores = ncores
 				
-
+		if(name == "default"):
+			filename, file_extension = os.path.splitext(self.bamfile)
+			self.name = os.path.basename(filename)
 		
 	#--------------------------------------------------------------------------------
 	# Define a method to dump the object as a .yaml/dictionary for use in other files

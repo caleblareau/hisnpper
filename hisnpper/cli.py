@@ -54,7 +54,7 @@ def main(mode, bamfile, snps, fasta, output,
 	print(script_dir)
 	click.echo(gettime() + "Starting hisnpper v%s" % __version__)
 	
-	if(mode == "ase"):
+	if(mode == "ase" or mode == "haplotype"):
 	
 		# Determine chromosomes in bam file
 		bam_chrs = []
@@ -71,10 +71,10 @@ def main(mode, bamfile, snps, fasta, output,
 			ncores, keep_temp_files)
 	
 		# Make output folders
-		of = output; fin = of; temp = of + "/temp"; 
+		of = output; fin = of; temp = of + "/temp"; logs = of + "/logs";
 		temp_split = temp + "/01_split"; temp_namesort = temp + "/02_frombam"
 		temp_whitelist = temp + "/03_whitelist"; temp_annobam = temp + "/04_annobam"
-		folders = [of, fin, temp, of + "/.internal", 
+		folders = [of, fin, temp, logs, of + "/.internal", 
 				temp_split, temp_namesort, temp_whitelist, temp_annobam,
 				of + "/.internal/parseltongue", of + "/.internal/samples"]
 		mkfolderout = [make_folder(x) for x in folders]
@@ -107,16 +107,23 @@ def main(mode, bamfile, snps, fasta, output,
 		filt_split_cmd = 'python ' +script_dir+'/python/02_splitBam.py --input '+p.bamfile + " --ncores " + str(ncores) + ' --chrfile ' + of + "/.internal/chrs.txt" + ' --out ' + of
 		os.system(filt_split_cmd)
 		
-		exit("Success")
-		
 		# Let Snakemake process the chromosome files
-		y_s = of + "/.internal/parseltongue/aa.object.yaml"
+		y_s = of + "/.internal/parseltongue/hisnnper.object.yaml"
 		with open(y_s, 'w') as yaml_file:
 			yaml.dump(dict(p), yaml_file, default_flow_style=False, Dumper=yaml.RoundTripDumper)
-			
+		cp_call = "cp " + y_s +  " " + logs + "/" + p.name + ".parameters.txt"
+		os.system(cp_call)
+		exit("Success")
+		
+		# Setup snakemake logs
+		snake_stats = logs + "/" + p.name + ".snakemake.stats"
+		snake_log = logs + "/" + p.name + ".snakemake.log"
 		snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.snpAnnotate.txt --cores '+str(ncores)+' --config cfp="' + y_s + '"'
 		os.system(snakecmd_chr)
-	
+		
+		if(mode == "haplotype"):
+			print("additional annotation in works")
+			
 		if keep_temp_files:
 			click.echo(gettime() + "Temporary files not deleted since --keep-temp-files was specified.")
 		else:
