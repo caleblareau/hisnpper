@@ -113,13 +113,13 @@ def main(mode, bamfile, snps, fasta, output,
 			yaml.dump(dict(p), yaml_file, default_flow_style=False, Dumper=yaml.RoundTripDumper)
 		cp_call = "cp " + y_s +  " " + logs + "/" + p.name + ".parameters.txt"
 		os.system(cp_call)
-		exit("Success")
 		
 		# Setup snakemake logs
 		snake_stats = logs + "/" + p.name + ".snakemake.stats"
 		snake_log = logs + "/" + p.name + ".snakemake.log"
-		snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.snpAnnotate.txt --cores '+str(ncores)+' --config cfp="' + y_s + '"'
+		snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.snpAnnotate.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+' &>' + snake_log
 		os.system(snakecmd_chr)
+		exit("Success")
 		
 		if(mode == "haplotype"):
 			print("additional annotation in works")
