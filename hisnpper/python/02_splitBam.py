@@ -27,7 +27,7 @@ chrs = [line.strip() for line in open(options.chrfile, 'r')]
 
 # Handle temporary directory structure
 temp = out + "/temp"
-temp_split = temp + "/01_split"; temp_namesort = temp + "/02_namesort"
+temp_split = temp + "/01_split"
 
 
 def processBam(chr):
@@ -36,14 +36,10 @@ def processBam(chr):
 	Here, file is the output per chromosome
 	'''	
 	temp1 = temp_split + "/splitBam." + chr + ".bam"
-	temp2 = temp_namesort + "/nameSort." + chr + ".bam"
 	
 	split_cmd = "samtools view -b " + bamname + " " + chr + " > " + temp1
 	os.system(split_cmd)
 	pysam.index(temp1)
-	
-	namesort_cmd = "samtools sort -n " + temp1 + " -o " + temp2
-	os.system(namesort_cmd)
 
 
 pool = Pool(processes=cpu)

@@ -11,6 +11,7 @@ script_dir = config["script_dir"]
 name = config["name"] 
 outdir = config["output"] 
 haplotype_tag = config["haplotype_tag"] 
+barcode_tag = config["barcode_tag"] 
 
 # Determine .bam files to execute for fragment overlap analysis
 infile1 = outdir + "/.internal/chrs.txt"
@@ -19,30 +20,27 @@ with open(infile1) as f:
     chrs = f.readlines()
 
 chrs = [x.strip() for x in chrs] 
-chrStats = [outdir + '/temp/03_whitelist/' + x + "_stats.txt" for x in chrs] 
+chrStats = [outdir + '/temp/03_whitelist/' + x + ".bam" for x in chrs] 
 whitelists1 = [outdir + '/temp/03_whitelist/whitelist_hap1_' + x + ".txt" for x in chrs] 
 whitelists2 = [outdir + '/temp/03_whitelist/whitelist_hap2_' + x + ".txt" for x in chrs] 
 annobams = [outdir + '/temp/04_annobam/' + name + "." + x + ".anno.bam" for x in chrs] 
 
 rule all:
 	input:
-		wl1 = outdir + "/"+name+".whitelist1.txt",
-		wl2 = outdir + "/"+name+".whitelist2.txt",
-		finalbam = outdir + "/"+name+".snp_tagged.bam",
-		finalbambai = outdir + "/"+name+".snp_tagged.bam.bai"
+		wl1 = outdir + "/" + name + ".ase.tsv.gz"
 
 rule assign_one_chromosome:
 	input:
 		snp = outdir + "/temp/01_split/SNPs_" + "{chr}" + ".tsv",
-		bam = outdir + "/temp/02_namesort/nameSort." + "{chr}" + ".bam",
+		bam = outdir + "/temp/01_split/splitBam." + "{chr}" + ".bam",
 	output:
-		whitelist1 = outdir + '/temp/03_whitelist/whitelist_hap1_' + "{chr}" + ".txt",
-		whitelist2 = outdir + '/temp/03_whitelist/whitelist_hap2_' + "{chr}" + ".txt"
+		master_awk_out1 = outdir + '/temp/02_frombam/rawFromBam_' + "{chr}" + ".txt"
 	threads:
 		1
 	run:
 		chr = wildcards.chr
-		# Assign reads 
+		
+		# Pull reads with a matching N mask
 		out_wl = outdir + '/temp/03_whitelist'
 		pycall1 = "python " + script_dir + "/python/assignReads.py --input " + input.bam + " -s " + input.snp + " -o " + out_wl
 		os.system(pycall1)
