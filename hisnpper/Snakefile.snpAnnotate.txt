@@ -9,9 +9,12 @@ from os.path import join
 configfile: config["cfp"]     
 script_dir = config["script_dir"]          
 name = config["name"] 
+fasta_file = config["fasta"] 
+
 outdir = config["output"] 
 haplotype_tag = config["haplotype_tag"] 
 barcode_tag = config["barcode_tag"] 
+min_aq = config["min_aq"] 
 
 # Determine .bam files to execute for fragment overlap analysis
 infile1 = outdir + "/.internal/chrs.txt"
@@ -20,14 +23,12 @@ with open(infile1) as f:
     chrs = f.readlines()
 
 chrs = [x.strip() for x in chrs] 
-chrStats = [outdir + '/temp/03_whitelist/' + x + ".bam" for x in chrs] 
-whitelists1 = [outdir + '/temp/03_whitelist/whitelist_hap1_' + x + ".txt" for x in chrs] 
-whitelists2 = [outdir + '/temp/03_whitelist/whitelist_hap2_' + x + ".txt" for x in chrs] 
-annobams = [outdir + '/temp/04_annobam/' + name + "." + x + ".anno.bam" for x in chrs] 
+raw_awk_files = [outdir + '/temp/02_frombam/rawFromBam_' + x + ".txt" for x in chrs] 
+
 
 rule all:
 	input:
-		wl1 = outdir + "/" + name + ".ase.tsv.gz"
+		final_ase = outdir + "/" + name + ".ase.tsv.gz"
 
 rule assign_one_chromosome:
 	input:
@@ -41,53 +42,19 @@ rule assign_one_chromosome:
 		chr = wildcards.chr
 		
 		# Pull reads with a matching N mask
-		out_wl = outdir + '/temp/03_whitelist'
-		pycall1 = "python " + script_dir + "/python/assignReads.py --input " + input.bam + " -s " + input.snp + " -o " + out_wl
-		os.system(pycall1)
-
-rule annotate_bam:
-	input:
-		whitelist1 = outdir + '/temp/03_whitelist/whitelist_hap1_' + "{chr}" + ".txt",
-		whitelist2 = outdir + '/temp/03_whitelist/whitelist_hap2_' + "{chr}" + ".txt"
-	output:
-		outbam = outdir + '/temp/04_annobam/' + name + "." + "{chr}" + ".anno.bam"
-	threads:
-		1
-	run:
-		chr = wildcards.chr
-		
-		# Assign reads 
-		inbam = outdir + '/temp/01_split/splitBam.' + chr + ".bam"
-		pycall2 = "python " + script_dir + "/python/annotateTag.py --input " + inbam + " --wl1 " + input.whitelist1 + " --wl2 " + input.whitelist2 + " --bam-tag " + haplotype_tag + " -o " + output.outbam
-		os.system(pycall2)
-		pysam.index(output.outbam)
-
-
-# Final merge of summary statistics
-rule merge_sumstats:
-	input:
-		wls1 = whitelists1,
-		wls2 = whitelists2
-	output:
-		final_wl1 = outdir + "/"+name+".whitelist1.txt",
-		final_wl2 = outdir + "/"+name+".whitelist2.txt",
-		final_sumstats = outdir + "/"+name+".sumstats.tsv"
-	run:
-		os.system("cat " + " ".join(input.wls1) + " > " + output.final_wl1 )
-		os.system("cat " + " ".join(input.wls2) + " > " + output.final_wl2 )
-		statdir = outdir + '/temp/03_whitelist'
-		aaSS_R = script_dir + "/R/02_mungeQC.R"
-		r_call1 = " ".join(["Rscript", aaSS_R, output.final_sumstats, statdir])
-		os.system(r_call1)
+		samtools_calmd_log = outdir + '/logs/samtools/' + "master_bam_parse." + chr + ".txt"
+		line1 = '(samtools calmd ' + input.bam + ' ' + fasta_file +''' -e | awk '$5 > ''' + min_aq 
+		line2 = '''  {print $0}' | awk 'BEGIN {OFS = FS = "\t" } ; {n=split($10,reads,""); split($11,qual,""); for (i=1; i <= length($10); i++) { if(reads[i] != "="){ print $3, $4, i, qual[i], reads[i], $1}} }' > '''
+		line3 = output.master_awk_out1 + ''' )2> ''' + samtools_calmd_log
+		sam_call1 = line1 + line2 + line3
+		os.system(sam_call1)
 
 # Final merge of the bam files
-rule merge_bam:
+rule final_merge:
 	input:
-		annobams = annobams
+		raw_awk_files = raw_awk_files
 	output:
-		finalbam = outdir + "/"+name+".snp_tagged.bam",
-		finalbambai = outdir + "/"+name+".snp_tagged.bam.bai"
+		final_ase = outdir + "/" + name + ".ase.tsv.gz"
 	run:
-		merge_parameters = [output.finalbam] + input.annobams
-		pysam.merge(*merge_parameters)
-		pysam.index(output.finalbam)
+		infiles = " ".join(raw_awk_files)
+		os.system("cat " + infiles + " > " + output.final_ase)

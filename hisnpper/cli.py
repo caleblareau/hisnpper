@@ -33,7 +33,7 @@ from ruamel.yaml.scalarstring import SingleQuotedScalarString as sqs
 
 @click.option('--name', '-n', default="default", help='Name for all of the output files (default: uses the .bam prefix)')
 @click.option('--barcode-tag', '-bt', default="DB", help='Two letter tag that indicates the single-cell ID')
-@click.option('--haplotype-tag', '-bt', default="HA", help='Two letter tag for bam file for phased reads')
+@click.option('--haplotype-tag', '-ht', default="HA", help='Two letter tag for bam file for phased reads')
 
 @click.option('--min-aq', '-ma', default=20, help='Minimum alignment quality for read to be considered.')
 
@@ -74,7 +74,7 @@ def main(mode, bamfile, snps, fasta, output,
 		of = output; fin = of; temp = of + "/temp"; logs = of + "/logs";
 		temp_split = temp + "/01_split"; temp_namesort = temp + "/02_frombam"
 		temp_whitelist = temp + "/03_whitelist"; temp_annobam = temp + "/04_annobam"
-		folders = [of, fin, temp, logs, of + "/.internal", 
+		folders = [of, fin, temp, logs, of + "/.internal", logs + "/samtools",
 				temp_split, temp_namesort, temp_whitelist, temp_annobam,
 				of + "/.internal/parseltongue", of + "/.internal/samples"]
 		mkfolderout = [make_folder(x) for x in folders]
@@ -104,7 +104,10 @@ def main(mode, bamfile, snps, fasta, output,
 				t.write("%s\n" % item)
 	
 		# Split bams by chromosome and sort by name
-		filt_split_cmd = 'python ' +script_dir+'/python/02_splitBam.py --input '+p.bamfile + " --ncores " + str(ncores) + ' --chrfile ' + of + "/.internal/chrs.txt" + ' --out ' + of
+		line1 = 'python ' +script_dir+'/python/02_splitBam.py --input '+p.bamfile + " --ncores " + str(ncores)
+		line2 =   ' --chrfile ' + of + "/.internal/chrs.txt" + ' --out ' + of + " --barcode-tag " + p.barcode_tag
+		filt_split_cmd = line1 + line2
+		
 		os.system(filt_split_cmd)
 		
 		# Let Snakemake process the chromosome files
