@@ -24,15 +24,18 @@ with open(infile1) as f:
 
 chrs = [x.strip() for x in chrs] 
 raw_awk_files = [outdir + '/temp/02_frombam/rawFromBam_' + x + ".txt" for x in chrs] 
+processed_read_files = [outdir + '/temp/03_processed/merged_' + x + ".txt" for x in chrs] 
 
+# File path to scripts
+intersect_reads_R = script_dir + "/R/03_intersect_reads_SNPs.R"
 
 rule all:
 	input:
 		final_ase = outdir + "/" + name + ".ase.tsv.gz"
 
-rule assign_one_chromosome:
+# First up, pull out reads / bases that overlap reference Ns
+rule pull_N_bp_chr:
 	input:
-		snp = outdir + "/temp/01_split/SNPs_" + "{chr}" + ".tsv",
 		bam = outdir + "/temp/01_split/splitBam." + "{chr}" + ".bam",
 	output:
 		master_awk_out1 = outdir + '/temp/02_frombam/rawFromBam_' + "{chr}" + ".txt"
@@ -48,13 +51,38 @@ rule assign_one_chromosome:
 		line3 = output.master_awk_out1 + ''' )2> ''' + samtools_calmd_log
 		sam_call1 = line1 + line2 + line3
 		os.system(sam_call1)
+		os.system("gzip " + samtools_calmd_log)
 
-# Final merge of the bam files
+# Next, filter these against known SNPs
+rule filter_raw_awk:
+	input:
+		snp = outdir + "/temp/01_split/SNPs_" + "{chr}" + ".tsv",
+		master_awk_out1 = outdir + '/temp/02_frombam/rawFromBam_' + "{chr}" + ".txt",
+		read_barcode = outdir + "/temp/01_split/splitBam."+"{chr}"+".read_barcode.tsv.gz"
+	output:
+		master_awk_out2 = outdir + '/temp/03_processed/merged_' + "{chr}" + ".txt",
+		readstats_log = outdir + '/logs/readstats/' + "quant1." + "{chr}" + ".txt",
+		master_awk_out1_gz = outdir + '/temp/02_frombam/rawFromBam_' + "{chr}" + ".txt.gz"
+	threads:
+		1
+	run:
+		chr = wildcards.chr
+		
+		# Execute Rscript to merge (via read names) barcode tag with the SNP information
+		r_call1 = " ".join(["Rscript", intersect_reads_R, input.snp, input.master_awk_out1, input.read_barcode, output.master_awk_out2, output.readstats_log])
+		print(r_call1)
+		os.system(r_call1)
+		os.system("gzip " + input.master_awk_out1)
+
+
+# Final merge of the processed SNP files
 rule final_merge:
 	input:
-		raw_awk_files = raw_awk_files
+		processed_read_files = processed_read_files
 	output:
 		final_ase = outdir + "/" + name + ".ase.tsv.gz"
 	run:
-		infiles = " ".join(raw_awk_files)
-		os.system("cat " + infiles + " > " + output.final_ase)
+		final_ase_no_compress = outdir + "/" + name + ".ase.tsv"
+		infiles = " ".join(processed_read_files)
+		os.system("cat " + infiles + " > " + final_ase_no_compress)
+		os.system("gzip " + final_ase_no_compress)

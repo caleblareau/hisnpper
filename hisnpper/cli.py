@@ -73,9 +73,10 @@ def main(mode, bamfile, snps, fasta, output,
 		# Make output folders
 		of = output; fin = of; temp = of + "/temp"; logs = of + "/logs";
 		temp_split = temp + "/01_split"; temp_namesort = temp + "/02_frombam"
-		temp_whitelist = temp + "/03_whitelist"; temp_annobam = temp + "/04_annobam"
-		folders = [of, fin, temp, logs, of + "/.internal", logs + "/samtools",
-				temp_split, temp_namesort, temp_whitelist, temp_annobam,
+		temp_processed = temp + "/03_processed"; temp_assign = temp + "/04_assign"; 
+		temp_annobam = temp + "/05_annobam"
+		folders = [of, fin, temp, logs, of + "/.internal", logs + "/samtools", logs + "/readstats",
+				temp_split, temp_namesort, temp_processed, temp_assign, temp_annobam,
 				of + "/.internal/parseltongue", of + "/.internal/samples"]
 		mkfolderout = [make_folder(x) for x in folders]
 	
@@ -126,6 +127,9 @@ def main(mode, bamfile, snps, fasta, output,
 		
 		if(mode == "haplotype"):
 			print("additional annotation in works")
+			
+			# Take the annotated variants and perform an assignment per-read
+			# Then, annotate each read in the bam file
 			
 		if keep_temp_files:
 			click.echo(gettime() + "Temporary files not deleted since --keep-temp-files was specified.")

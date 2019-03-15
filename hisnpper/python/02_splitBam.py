@@ -28,7 +28,6 @@ out = options.out
 barcode_tag = str(options.barcode_tag)
 cpu = int(options.ncores)
 chrs = [line.strip() for line in open(options.chrfile, 'r')]
-print(barcode_tag)
 
 def getBarcode(intags):
 	'''
