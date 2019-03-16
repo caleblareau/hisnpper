@@ -2,7 +2,6 @@ suppressMessages(suppressWarnings(library(data.table)))
 suppressMessages(suppressWarnings(library(dplyr)))
 suppressMessages(suppressWarnings(library(tools)))
 
-
 "%ni%" <- Negate("%in%")
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -30,17 +29,21 @@ if(FALSE){
 
 # Import chromosome for analysis
 reads_from_awk <- fread(input_fromAwk_file)
-colnames(reads_from_awk) <- c("chr", "bp", "pos_in_read", "BQ", "base", "read_id")
+colnames(reads_from_awk) <- c("chr", "bp", "pos_in_read", "BQletter", "base", "read_id")
 reads_from_awk[,pos := bp + pos_in_read -1]
 
 # Import and filter for SNPs
 snp_dt <- fread(input_snp_file)
 boo <- reads_from_awk$pos %in% snp_dt[["V2"]]
-boo <- TRUE # for testing UPDATE
+#boo <- TRUE # for testing UPDATE
 filt_snps <- reads_from_awk[boo]
 
-# TO DO : numeric conversion of BQ
-# here
+# Numeric conversion of BQ
+BQvec <- 0:40
+names(BQvec) <-  c("!",'"',"#","$","%","&","'","(",")","*","+",",","-",".","/",
+                "0","1","2","3","4","5","6","7","8","9",":",";","<","=",">",
+                "?","@","A","B","C","D","E","F","G","H","I")
+filt_snps[,BQ := BQvec[BQletter]]
 
 # Merge read_id with barcode
 read_barcode <- fread(cmd = paste0("zcat < ", input_read_barcode_file), col.names = c("read_id", "barcode_id"))
