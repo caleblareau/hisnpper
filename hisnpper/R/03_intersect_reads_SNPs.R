@@ -35,7 +35,7 @@ reads_from_awk[,pos := bp + pos_in_read -1]
 # Import and filter for SNPs
 snp_dt <- fread(input_snp_file)
 boo <- reads_from_awk$pos %in% snp_dt[["V2"]]
-#boo <- TRUE # for testing UPDATE
+boo <- TRUE # for testing UPDATE
 filt_snps <- reads_from_awk[boo]
 
 # Numeric conversion of BQ
