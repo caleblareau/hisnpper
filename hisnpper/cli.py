@@ -51,7 +51,6 @@ def main(mode, bamfile, snps, fasta, output,
 	
 	__version__ = get_distribution('hisnpper').version
 	script_dir = os.path.dirname(os.path.realpath(__file__))
-	print(script_dir)
 	click.echo(gettime() + "Starting hisnpper v%s" % __version__)
 	
 	if(mode == "ase" or mode == "haplotype"):
@@ -119,17 +118,18 @@ def main(mode, bamfile, snps, fasta, output,
 		os.system(cp_call)
 		
 		# Setup snakemake logs
-		snake_stats = logs + "/" + p.name + ".snakemake.stats"
-		snake_log = logs + "/" + p.name + ".snakemake.log"
+		snake_stats = logs + "/" + p.name + ".snakemake_ASE.stats"
+		snake_log = logs + "/" + p.name + ".snakemake_ASE.log"
 		snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.snpAnnotate.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+' &>' + snake_log
 		os.system(snakecmd_chr)
-		exit("Success")
 		
+		# Assign reads to corresponding haplotype
 		if(mode == "haplotype"):
-			print("additional annotation in works")
+			snake_stats = logs + "/" + p.name + ".snakemake_haplotype.stats"
+			snake_log = logs + "/" + p.name + ".snakemake_haplotype.log"
+			snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.haplotype.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+' &>' + snake_log
+			os.system(snakecmd_chr)
 			
-			# Take the annotated variants and perform an assignment per-read
-			# Then, annotate each read in the bam file
 			
 		if keep_temp_files:
 			click.echo(gettime() + "Temporary files not deleted since --keep-temp-files was specified.")

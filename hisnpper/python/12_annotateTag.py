@@ -5,7 +5,6 @@ import shutil
 import os 
 import gzip 
 
-from multiprocessing import Pool
 from optparse import OptionParser
 from collections import Counter
 from contextlib import contextmanager
@@ -15,28 +14,35 @@ usage = "usage: %prog [options] [inputs] Script to process bam files split by ch
 opts = OptionParser(usage=usage)
 
 opts.add_option("--input", "-i", help="Name of the .bam file to parse")
-opts.add_option("--wl1", help="Filepath to first haplotype whitelist")
-opts.add_option("--wl2", help="Filepath to second haplotype whitelist")
+opts.add_option("--assign-table", "-t", help="Filepath to the table with haplotype assignments")
 opts.add_option("--bam-tag", "-b", help="Two characters to be associated with the bam tag that will be appended")
-
 opts.add_option("--out", "-o", help="Annotated bam file output path")
+opts.add_option("--cutoff", "-c", help="Cutoff for haplotype assignment")
 
 options, arguments = opts.parse_args()
 
 inputbamname = options.input
 outputbamname = options.out
-wl1_file = options.wl1
-wl2_file = options.wl2
+at_file = options.assign_table
 bam_tag = options.bam_tag
+cutoff = float(options.cutoff)
 
 # Read in the whitelists
-with open(wl1_file) as wl1_file_h:
-	content = wl1_file_h.readlines()
-	wl1 = [x.strip() for x in content] 
-
-with open(wl2_file) as wl2_file_h:
-	content = wl2_file_h.readlines()
-	wl2 = [x.strip() for x in content] 
+d = {}
+with open(at_file) as file_h:
+	for line in file_h:
+		(read, haplotype, value) = line.split()
+		if(float(value) > cutoff):
+			d[read] = haplotype
+ 
+def get_haplotype(read_name):
+	'''
+	Parse out the bead barcode per-read
+	'''
+	if read_name in d:
+		return(d[read_name])
+	else:
+		return("NA")
 
 # BAM I/O
 bam = pysam.AlignmentFile(inputbamname, "rb")
@@ -45,14 +51,9 @@ out = pysam.AlignmentFile(outputbamname, "wb", template = bam)
 # Loop over bam and extract the sequence 
 for read in bam:
 	read_name = read.query_name
-	# If read barcode is in whitelist, then write it out
-	tag = 0
-	if(read_name in wl1):
-		tag = 1
-	elif(read_name in wl2):
-		tag = 2
-	else:
-		tag = 0 
+	
+	# If read barcode has been assigned, then write it out
+	tag = get_haplotype(read_name)
 	read.tags = read.tags + [(bam_tag, tag)]
 	out.write(read)
 	

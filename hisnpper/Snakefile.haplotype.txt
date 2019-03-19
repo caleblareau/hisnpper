@@ -1,0 +1,109 @@
+import os
+import subprocess
+import shutil
+import re
+import pysam
+
+from os.path import join
+
+configfile: config["cfp"]     
+script_dir = config["script_dir"]          
+name = config["name"] 
+fasta_file = config["fasta"] 
+
+outdir = config["output"] 
+haplotype_tag = config["haplotype_tag"] 
+barcode_tag = config["barcode_tag"] 
+min_aq = config["min_aq"] 
+cutoff = "0.9"
+
+# Determine .bam files to execute for fragment overlap analysis
+infile1 = outdir + "/.internal/chrs.txt"
+
+with open(infile1) as f:
+    chrs = f.readlines()
+
+chrs = [x.strip() for x in chrs] 
+processed_bams = [outdir + '/temp/05_annobam/splitBamAnno_' + x + ".bam" for x in chrs] 
+processed_read_files = [outdir + '/temp/04_assign/assigned_' + x + ".tsv" for x in chrs] 
+
+# File path to scripts
+assign_haplotypes_R = script_dir + "/R/11_assign_haplotypes.R"
+anno_bam_py = script_dir + "/python/12_annotateTag.py"
+quantify_assignment_R = script_dir + "/R/13_quantify_assignment.R"
+
+rule all:
+	input:
+		final_bam = outdir + "/" + name + ".hs.bam",
+		final_bai = outdir + "/" + name + ".hs.bam.bai",
+		final_haplo_conf = outdir + "/" + name + ".haplo_conf.tsv.gz"
+
+# First up, pull out reads / bases that overlap reference Ns
+rule assign_haplotypes:
+	input:
+		snp = outdir + "/temp/01_split/SNPs_" + "{chr}" + ".tsv",
+		awk2 =  outdir + '/temp/03_processed/merged_' + "{chr}" + ".txt"
+	output:
+		read_assign = outdir + "/temp/04_assign/assigned_" + "{chr}" + ".tsv"
+	threads:
+		1
+	run:
+		chr = wildcards.chr
+		
+		# Execute Rscript to merge (via read names) barcode tag with the SNP information
+		r_call1 = " ".join(["Rscript", assign_haplotypes_R, input.snp, input.awk2, output.read_assign])
+		os.system(r_call1)
+
+
+rule annotate_bam:
+	input:
+		bam = outdir + "/temp/01_split/splitBam." + "{chr}" + ".bam",
+		read_assign = outdir + "/temp/04_assign/assigned_" + "{chr}" + ".tsv"
+	output:
+		outbam =  outdir + '/temp/05_annobam/splitBamAnno_' + "{chr}" + ".bam"
+	threads:
+		1
+	run:
+		chr = wildcards.chr
+		
+		# Execute Rscript to merge (via read names) barcode tag with the SNP information
+		pycall = " ".join(["python", anno_bam_py, "--input", input.bam, "--assign-table", input.read_assign, "--bam-tag", haplotype_tag, "--out", output.outbam, "--cutoff", cutoff])
+		os.system(pycall)
+
+
+# Final merge of the processed bam files
+rule final_merge_bam:
+	input:
+		processed_bams = processed_bams
+	output:
+		finalbam = outdir+ "/" +name+".hs.bam",
+		finalbambai = outdir + "/" +name+".hs.bam.bai"
+	run:
+		merge_parameters = [output.finalbam] + input.processed_bams
+		pysam.merge(*merge_parameters)
+		pysam.index(output.finalbam)
+	
+		
+# Final merge of the haplotype confidence calls
+rule final_merge_confidences:
+	input:
+		processed_read_files = processed_read_files
+	output:
+		final_haplo_conf = outdir + "/" + name + ".haplo_conf.tsv"
+	run:
+		infiles = " ".join(processed_read_files)
+		os.system("cat " + infiles + " > " + output.final_haplo_conf)
+		
+
+# Update QC stats by appending to the existing file
+rule append_QC:
+	input:
+		qc_in = outdir + "/" + name + ".qcQuant.tsv",
+		final_haplo_conf_no_compress = outdir + "/" + name + ".haplo_conf.tsv"
+	output:
+		final_haplo_conf = outdir + "/" + name + ".haplo_conf.tsv.gz"
+	run:
+		r_call2 = " ".join(["Rscript", quantify_assignment_R, input.qc_in, input.final_haplo_conf_no_compress, cutoff])
+		os.system(r_call2)
+		os.system("gzip " + input.final_haplo_conf_no_compress)
+	
