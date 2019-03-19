@@ -35,7 +35,7 @@ conf_count_df <- conf_dt %>% mutate(call = ifelse(V3 > cutoff, V2, "ambiguous"))
 maxx <- max(qc_df$count)
 odf <- rbind(qc_df, conf_count_df) %>% arrange(desc(count)) %>%
   mutate(prop = round((count / maxx)*100,2))
-colnames(odf) <- c("Category", "count", "Percentage")
+colnames(odf) <- c("Category", "Count", "Percentage")
 
 write.table(odf, file = input_qc1, row.names = FALSE, col.names = TRUE, sep = "\t", quote = FALSE)
 
