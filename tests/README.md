@@ -1,7 +1,12 @@
 ### Testing hisnpper
 
 ```
-hisnpper ase -b mESC_test.bam -s CAST_129S_testSNPtable.tsv.gz -o out --fasta /Users/clareau/dat/genomes/mm10/mm10-Nmask.fa -bt XB
+
+# Pick applicable filepath depending on the system
+fasta="/data/aryee/caleb/mESC_allele/mm10-masked/genome.fa"
+fasta="/Users/clareau/dat/genomes/mm10/mm10-Nmask.fa"
+
+hisnpper ase -b mESC_test.bam -s CAST_129S_testSNPtable.tsv.gz -o out --fasta $fasta -bt XB
 ```
 
 <br><br>

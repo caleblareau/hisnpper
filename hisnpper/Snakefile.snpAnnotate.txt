@@ -25,13 +25,16 @@ with open(infile1) as f:
 chrs = [x.strip() for x in chrs] 
 raw_awk_files = [outdir + '/temp/02_frombam/rawFromBam_' + x + ".txt" for x in chrs] 
 processed_read_files = [outdir + '/temp/03_processed/merged_' + x + ".txt" for x in chrs] 
+quant1s = [outdir + '/logs/readstats/' + "quant1." + x + ".txt" for x in chrs] 
 
 # File path to scripts
 intersect_reads_R = script_dir + "/R/03_intersect_reads_SNPs.R"
+munge_qc_R = script_dir + "/R/04_mungeQC1.R"
 
 rule all:
 	input:
-		final_ase = outdir + "/" + name + ".ase.tsv.gz"
+		final_ase = outdir + "/" + name + ".ase.tsv.gz",
+		final_qc1 = outdir + "/" + name + ".qcQuant.tsv"
 
 # First up, pull out reads / bases that overlap reference Ns
 rule pull_N_bp_chr:
@@ -61,8 +64,7 @@ rule filter_raw_awk:
 		read_barcode = outdir + "/temp/01_split/splitBam."+"{chr}"+".read_barcode.tsv.gz"
 	output:
 		master_awk_out2 = outdir + '/temp/03_processed/merged_' + "{chr}" + ".txt",
-		readstats_log = outdir + '/logs/readstats/' + "quant1." + "{chr}" + ".txt",
-		master_awk_out1_gz = outdir + '/temp/02_frombam/rawFromBam_' + "{chr}" + ".txt.gz"
+		readstats_log = outdir + '/logs/readstats/' + "quant1." + "{chr}" + ".txt"
 	threads:
 		1
 	run:
@@ -70,9 +72,7 @@ rule filter_raw_awk:
 		
 		# Execute Rscript to merge (via read names) barcode tag with the SNP information
 		r_call1 = " ".join(["Rscript", intersect_reads_R, input.snp, input.master_awk_out1, input.read_barcode, output.master_awk_out2, output.readstats_log])
-		print(r_call1)
 		os.system(r_call1)
-		os.system("gzip " + input.master_awk_out1)
 
 
 # Final merge of the processed SNP files
@@ -86,3 +86,13 @@ rule final_merge:
 		infiles = " ".join(processed_read_files)
 		os.system("cat " + infiles + " > " + final_ase_no_compress)
 		os.system("gzip " + final_ase_no_compress)
+		
+# Final merge of the processed SNP files
+rule munge_qc:
+	input:
+		quants_1 = quant1s
+	output:
+		final_qc1 = outdir + "/" + name + ".qcQuant.tsv"
+	run:
+		r_call_qc = " ".join(["Rscript", munge_qc_R, outdir + '/logs/readstats/' , output.final_qc1])
+		os.system(r_call_qc)

@@ -24,8 +24,17 @@ if(FALSE){
   input_read_barcode_file <- paste0(base, "/","out/temp/01_split/splitBam.chr1.read_barcode.tsv.gz")
   out_filtered_HQ_file <- paste0(base, "/","out/temp/03_processed/merged_chr1.txt")
   out_stats_file <- paste0(base, "/","out/logs/readstats/quant1.chr1.tsv")
-  
 }
+
+if(FALSE){
+  base <- "/data/aryee/caleb/mESC_allele/biorad-bams"
+  input_snp_file <- paste0(base, "/","hs_Exp75-S15/temp/01_split/SNPs_chr1.tsv")
+  input_fromAwk_file <- paste0(base, "/","hs_Exp75-S15/temp/02_frombam/rawFromBam_chr1.txt")
+  input_read_barcode_file <- paste0(base, "/","hs_Exp75-S15/temp/01_split/splitBam.chr1.read_barcode.tsv.gz")
+  out_filtered_HQ_file <- paste0(base, "/","hs_Exp75-S15/temp/03_processed/merged_chr1.txt")
+  out_stats_file <- paste0(base, "/","hs_Exp75-S15/logs/readstats/quant1.chr1.txt")
+}
+
 
 # Import chromosome for analysis
 reads_from_awk <- fread(input_fromAwk_file)
@@ -34,8 +43,7 @@ reads_from_awk[,pos := bp + pos_in_read -1]
 
 # Import and filter for SNPs
 snp_dt <- fread(input_snp_file)
-boo <- reads_from_awk$pos %in% snp_dt[["V2"]]
-#boo <- TRUE # for testing UPDATE
+boo <- reads_from_awk$pos %in% snp_dt[[2]]
 filt_snps <- reads_from_awk[boo]
 
 # Numeric conversion of BQ
