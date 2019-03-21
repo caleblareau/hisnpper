@@ -47,14 +47,32 @@ rule pull_N_bp_chr:
 	run:
 		chr = wildcards.chr
 		
-		# Pull reads with a matching N mask
-		samtools_calmd_log = outdir + '/logs/samtools/' + "master_bam_parse." + chr + ".txt"
-		line1 = '(samtools calmd ' + input.bam + ' ' + fasta_file +''' -e | awk '$5 > ''' + min_aq 
+		# Pull reads with a matching N mask adjusting for strand as needed
+		samtools_calmd_log_F = outdir + '/logs/samtools/' + "master_bam_parse." + chr + "_F.txt"
+		samtools_calmd_log_R = outdir + '/logs/samtools/' + "master_bam_parse." + chr + "_F.txt"
+		
+		# Temp stranded output files
+		forward_ma = output.master_awk_out1 + "_F"
+		reverse_ma = output.master_awk_out1 + "_R"
+		
+		# Generate the forward strand calls
+		line1 = '(samtools view -F 0x10 -b ' + input.bam + " | " + 'samtools calmd - ' + fasta_file +''' -e | awk '$5 > ''' + min_aq 
 		line2 = '''  {print $0}' | awk 'BEGIN {OFS = FS = "\t" } ; {n=split($10,reads,""); split($11,qual,""); for (i=1; i <= length($10); i++) { if(reads[i] != "="){ print $3, $4, i, qual[i], reads[i], $1}} }' > '''
-		line3 = output.master_awk_out1 + ''' )2> ''' + samtools_calmd_log
+		line3 = forward_ma + ''' )2> ''' + samtools_calmd_log_F
 		sam_call1 = line1 + line2 + line3
 		os.system(sam_call1)
-		os.system("gzip " + samtools_calmd_log)
+		
+		# Generate the reverse strand calls by flipping the observed base
+		line4 = '(samtools view -f 0x10 -b ' + input.bam + " | " + 'samtools calmd - ' + fasta_file +''' -e | awk '$5 > ''' + min_aq 
+		line5 = '''  {print $0}' | awk 'BEGIN {OFS = FS = "\t" } ; {n=split($10,reads,""); split($11,qual,""); for (i=1; i <= length($10); i++) { if(reads[i] != "="){ if(reads[i] == "A") base = "T"; if(reads[i] == "C") base = "G"; if(reads[i] == "G") base = "C"; if(reads[i] == "T") base = "A"; print $3, $4, i, qual[i], base, $1}} }' > '''
+		line6 = reverse_ma + ''' )2> ''' + samtools_calmd_log_R
+		sam_call2 = line4 + line5 + line6
+		os.system(sam_call2)
+		
+		# Link them together and clean up
+		os.system("cat " + forward_ma + " " + reverse_ma + " > " + output.master_awk_out1)
+		os.system("gzip " + samtools_calmd_log_F)
+		os.system("gzip " + samtools_calmd_log_R)
 
 # Next, filter these against known SNPs
 rule filter_raw_awk:
