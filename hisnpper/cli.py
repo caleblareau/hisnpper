@@ -39,10 +39,11 @@ from ruamel.yaml.scalarstring import SingleQuotedScalarString as sqs
 
 @click.option('--ncores', '-c', default=2, help='Number of cores to be used in analysis')
 @click.option('--keep-temp-files', '-z', is_flag=True, help='Keep all intermediate files.')
+@click.option('--snake-stdout', '-so', is_flag=True, help='Write snakemake log to sdout rather than a file')
 
 def main(mode, bamfile, snps, fasta, output,
 	name, barcode_tag, haplotype_tag, min_aq,
-	ncores, keep_temp_files):
+	ncores, keep_temp_files, snake_stdout):
 	
 	"""
 	hisnpper: Infer allele-specific attributes from sequence data\n
@@ -111,7 +112,7 @@ def main(mode, bamfile, snps, fasta, output,
 		os.system(filt_split_cmd)
 		
 		# Let Snakemake process the chromosome files
-		y_s = of + "/.internal/parseltongue/hisnnper.object.yaml"
+		y_s = of + "/.internal/parseltongue/hisnpper.object.yaml"
 		with open(y_s, 'w') as yaml_file:
 			yaml.dump(dict(p), yaml_file, default_flow_style=False, Dumper=yaml.RoundTripDumper)
 		cp_call = "cp " + y_s +  " " + logs + "/" + p.name + ".parameters.txt"
@@ -120,14 +121,22 @@ def main(mode, bamfile, snps, fasta, output,
 		# Setup snakemake logs
 		snake_stats = logs + "/" + p.name + ".snakemake_ASE.stats"
 		snake_log = logs + "/" + p.name + ".snakemake_ASE.log"
-		snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.snpAnnotate.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+' &>' + snake_log
+		
+		snake_log_out = ""
+		if not snake_stdout:
+			snake_log_out = ' &>' + snake_log 
+			
+		snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.snpAnnotate.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+snake_log_out
 		os.system(snakecmd_chr)
 		
 		# Assign reads to corresponding haplotype
 		if(mode == "haplotype"):
 			snake_stats = logs + "/" + p.name + ".snakemake_haplotype.stats"
 			snake_log = logs + "/" + p.name + ".snakemake_haplotype.log"
-			snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.haplotype.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+' &>' + snake_log
+			
+			if not snake_stdout:
+				snake_log_out = ' &>' + snake_log 
+			snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.haplotype.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+snake_log_out
 			os.system(snakecmd_chr)
 			
 			
