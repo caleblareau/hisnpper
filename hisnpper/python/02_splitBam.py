@@ -59,7 +59,7 @@ def writeBamRead(two):
 			# Write reads + barcodes
 			read_barcode = getBarcode(read.tags)
 			read_name = read.query_name
-			value = read_name + "\t" + read_barcode + "\n"
+			value = str(read_name) + "\t" + str(read_barcode) + "\n"
 			out_write.write(value)
 	bam.close()
 	
