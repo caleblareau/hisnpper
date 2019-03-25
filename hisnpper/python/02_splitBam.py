@@ -33,6 +33,9 @@ def getBarcode(intags):
 	'''
 	Parse out the barcode per-read
 	'''
+	if(barcode_tag == "none"):
+		return("none")
+	
 	for tg in intags:
 		if(barcode_tag == tg[0]):
 			return(tg[1])

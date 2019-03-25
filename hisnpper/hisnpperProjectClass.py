@@ -46,7 +46,6 @@ class hisnpperProject():
 		yield 'hisnpper_version', self.hisnpper_version
 		yield 'script_dir', self.script_dir
 		yield 'mode', self.mode
-		yield 'script_dir', self.script_dir
 		yield 'bamfile', self.bamfile
 		yield 'snps', self.snps
 		yield 'fasta', self.fasta
@@ -56,3 +55,47 @@ class hisnpperProject():
 		yield 'haplotype_tag', self.haplotype_tag
 		yield 'min_aq', self.min_aq
 		yield 'ncores', self.ncores
+
+class hisnpperEditProject():
+	def __init__(self, script_dir,
+			bamfile, fasta, name, output,
+			edit, min_aq, barcode_tag, keep_positions, remove_positions,
+			ncores, keep_temp_files):
+		
+		#----------------------------------
+		# Assign straightforward attributes
+		#----------------------------------
+		self.hisnpper_version = get_distribution('hisnpper').version
+		self.script_dir = script_dir
+		self.bamfile = bamfile
+		self.fasta = fasta
+		self.name = name	
+		self.output = output
+		self.min_aq = str(min_aq)
+		self.barcode_tag = barcode_tag
+		self.keep_positions = keep_positions
+		self.remove_positions = remove_positions
+		self.ncores = ncores
+				
+		if(name == "default"):
+			filename, file_extension = os.path.splitext(self.bamfile)
+			self.name = os.path.basename(filename)
+		
+	#--------------------------------------------------------------------------------
+	# Define a method to dump the object as a .yaml/dictionary for use in other files
+	#--------------------------------------------------------------------------------
+	def __iter__(self):
+		yield 'hisnpper_version', self.hisnpper_version
+		yield 'script_dir', self.script_dir
+		yield 'bamfile', self.bamfile
+		yield 'fasta', self.fasta
+		yield 'name', self.name
+		yield 'output', self.output
+
+		yield 'min_aq', self.min_aq	
+		yield 'barcode_tag', self.barcode_tag		
+		yield 'keep_positions', self.keep_positions
+		yield 'remove_positions', self.remove_positions
+
+		yield 'ncores', self.ncores
+

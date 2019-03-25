@@ -1,6 +1,5 @@
 """
-hisnpper: Annotating single cell and other epigenomic datasets
-with haplotype of origin
+hisnpper: deriving nucleotide-specific inferences from sequencing data.
 """
 from setuptools import find_packages, setup
 from distutils.core import setup, Extension
@@ -14,7 +13,7 @@ setup(
     license='MIT',
     author='Caleb Lareau',
     author_email='clareau@broadinstitute.org',
-    description='hisnpper: annotating reads based on haplotype-derived SNPs',
+    description='hisnpper: deriving nucleotide-specific inferences from sequencing data.',
     long_description=__doc__,
     packages=find_packages(exclude=['tests']),
     include_package_data=True,
@@ -23,7 +22,8 @@ setup(
     install_requires=dependencies,
     entry_points={
         'console_scripts': [
-            'hisnpper = hisnpper.cli:main'
+            'hisnpper = hisnpper.cli:main',
+            'hisnpper-edits = hisnpper.editcli:main',
         ],
     },
     classifiers=[

@@ -26,13 +26,13 @@ from ruamel.yaml.scalarstring import SingleQuotedScalarString as sqs
 
 @click.argument('mode', type=click.Choice(['ase', 'haplotype']))
 
-@click.option('--bamfile', '-b', help='Bam file that will be parsed / annotated.')
-@click.option('--snps', '-s', help='Input table containing SNP information.')
-@click.option('--fasta', '-f', help='Input fasta file; needs to be hard-masked at relevant base pairs')
+@click.option('--bamfile', '-b',required = True, help='Bam file that will be parsed / annotated.')
+@click.option('--snps', '-s', required = True, help='Input table containing SNP information.')
+@click.option('--fasta', '-f', required = True, help='Input fasta file; needs to be hard-masked at relevant base pairs')
 @click.option('--output', '-o', default="hisnpper_out", help='Output directory for analysis; see documentation.')
 
 @click.option('--name', '-n', default="default", help='Name for all of the output files (default: uses the .bam prefix)')
-@click.option('--barcode-tag', '-bt', default="DB", help='Two letter tag that indicates the single-cell ID')
+@click.option('--barcode-tag', '-bt', default="none", help='Two letter tag that indicates the single-cell ID; by default, "none". This is essential for single-cell analyses.')
 @click.option('--haplotype-tag', '-ht', default="HA", help='Two letter tag for bam file for phased reads')
 
 @click.option('--min-aq', '-ma', default=20, help='Minimum alignment quality for read to be considered.')
@@ -46,7 +46,7 @@ def main(mode, bamfile, snps, fasta, output,
 	ncores, keep_temp_files, snake_stdout):
 	
 	"""
-	hisnpper: Infer allele-specific attributes from sequence data\n
+	hisnpper: deriving nucleotide-specific inferences from sequencing data.\n
 	Caleb Lareau, clareau <at> broadinstitute <dot> org \n
 	"""
 	
@@ -90,7 +90,7 @@ def main(mode, bamfile, snps, fasta, output,
 
 		# Split discriminative SNPs by chr using a simple R call
 		split_R = script_dir + "/R/01_splitSNPs.R"
-		r_callSplit = " ".join(["Rscript", split_R, temp_split, snps])
+		r_callSplit = " ".join(["Rscript", split_R, temp_split, snps, "SNPs"])
 		os.system(r_callSplit)
 	
 		# Determine chrs with snps
@@ -126,7 +126,7 @@ def main(mode, bamfile, snps, fasta, output,
 		if not snake_stdout:
 			snake_log_out = ' &>' + snake_log 
 			
-		snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.snpAnnotate.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+snake_log_out
+		snakecmd_chr = 'snakemake --snakefile '+script_dir+'/snake/Snakefile.snpAnnotate.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+snake_log_out
 		os.system(snakecmd_chr)
 		
 		# Assign reads to corresponding haplotype
@@ -136,7 +136,7 @@ def main(mode, bamfile, snps, fasta, output,
 			
 			if not snake_stdout:
 				snake_log_out = ' &>' + snake_log 
-			snakecmd_chr = 'snakemake --snakefile '+script_dir+'/Snakefile.haplotype.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+snake_log_out
+			snakecmd_chr = 'snakemake --snakefile '+script_dir+'/snake/Snakefile.haplotype.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+snake_log_out
 			os.system(snakecmd_chr)
 			
 			

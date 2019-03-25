@@ -25,6 +25,7 @@ if(file_path_sans_ext(basename(args[1])) == "R"){
 
 outdir <- args[i+1] # directory of .rds files
 file <- args[i+2] # file path to the number of barcodes for each observed barcode
+front <- args[i+3] # first part of the file out part (SNPs in regular hisnpper)
 
 importDT <- function(file){
   if(tools::file_ext(file) == "gz"){
@@ -42,7 +43,7 @@ listy <- split( df , f = df[,1])
 lapply(1:length(listy), function(i){
   chr <- names(listy)[i]
   write.table(listy[[i]],
-            file = paste0(outdir, "/", "SNPs_", chr, ".tsv"),
+            file = paste0(outdir, "/", front, "_", chr, ".tsv"),
            quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
   chr
 }) -> token
