@@ -10,11 +10,13 @@ configfile: config["cfp"]
 script_dir = config["script_dir"]          
 name = config["name"] 
 fasta_file = config["fasta"] 
+edit = config["edit"] 
 
 outdir = config["output"] 
-haplotype_tag = config["haplotype_tag"] 
 barcode_tag = config["barcode_tag"] 
 min_aq = config["min_aq"] 
+keep_positions = config["keep_positions"] 
+remove_positions = config["remove_positions"] 
 
 # Determine .bam files to execute for fragment overlap analysis
 infile1 = outdir + "/.internal/chrs.txt"
@@ -28,15 +30,17 @@ processed_read_files = [outdir + '/temp/03_processed/merged_' + x + ".txt" for x
 quant1s = [outdir + '/logs/readstats/' + "quant1." + x + ".txt" for x in chrs] 
 
 # File path to scripts
-intersect_reads_R = script_dir + "/R/03_intersect_reads_SNPs.R"
-munge_qc_R = script_dir + "/R/04_mungeQC1.R"
+intersect_reads_edits_R = script_dir + "/R/22_intersect_reads_edits.R"
+munge_qc_edits_R = script_dir + "/R/04_mungeQC1.R"
+filterMA_py = script_dir + "/python/21_process_master_awk_edit.py"
 
 rule all:
 	input:
-		final_ase = outdir + "/" + name + ".ase.tsv.gz",
+		final_edit_file = outdir + "/" + name + ".edits.tsv.gz",
 		final_qc1 = outdir + "/" + name + ".qcQuant.tsv"
 
-# First up, pull out reads / bases that overlap reference Ns
+# First up, pull out reads / bases that represent mismatches
+# Adjust the strand because we can
 rule pull_strand_bp_chr:
 	input:
 		bam = outdir + "/temp/01_split/splitBam." + "{chr}" + ".bam",
@@ -49,35 +53,36 @@ rule pull_strand_bp_chr:
 		
 		# Pull reads with a matching N mask adjusting for strand as needed
 		samtools_calmd_log_F = outdir + '/logs/samtools/' + "master_bam_parse." + chr + "_F.txt"
-		samtools_calmd_log_R = outdir + '/logs/samtools/' + "master_bam_parse." + chr + "_F.txt"
+		samtools_calmd_log_R = outdir + '/logs/samtools/' + "master_bam_parse." + chr + "_R.txt"
 		
 		# Temp stranded output files
 		forward_ma = output.master_awk_out1 + "_F"
 		reverse_ma = output.master_awk_out1 + "_R"
+			
+		forward_ma_py = output.master_awk_out1 + "_F_py"
+		reverse_ma_py = output.master_awk_out1 + "_R_py"
 		
 		# Generate the forward strand calls
-		line1 = '(samtools view -F 0x10 -b ' + input.bam + " | " + 'samtools calmd - ' + fasta_file +''' -e | awk '$5 > ''' + min_aq 
-		line2 = '''  {print $0}' | awk 'BEGIN {OFS = FS = "\t" } ; {n=split($10,reads,""); split($11,qual,""); for (i=1; i <= length($10); i++) { if(reads[i] != "="){ print $3, $4, i, qual[i], reads[i], $1}} }' > '''
-		line3 = forward_ma + ''' )2> ''' + samtools_calmd_log_F
-		sam_call1 = line1 + line2 + line3
+		sam_call1 = '(samtools view -F 0x10 -b ' + input.bam + " | " + 'samtools calmd - ' + fasta_file + " -e > " + forward_ma + ''' )2> ''' + samtools_calmd_log_F
+		print(sam_call1)
 		os.system(sam_call1)
+		py_call1 = " ".join(["python", filterMA_py, "--input", forward_ma, "--output", forward_ma_py, "-c", min_aq, "-r", "no"])
+		print(py_call1)
+		os.system(py_call1)
 		
 		# Generate the reverse strand calls by flipping the observed base
-		line4 = '(samtools view -f 0x10 -b ' + input.bam + " | " + 'samtools calmd - ' + fasta_file +''' -e | awk '$5 > ''' + min_aq 
-		line5 = '''  {print $0}' | awk 'BEGIN {OFS = FS = "\t" } ; {n=split($10,reads,""); split($11,qual,""); for (i=1; i <= length($10); i++) { if(reads[i] != "="){ if(reads[i] == "A") base = "T"; if(reads[i] == "C") base = "G"; if(reads[i] == "G") base = "C"; if(reads[i] == "T") base = "A"; print $3, $4, i, qual[i], base, $1}} }' > '''
-		line6 = reverse_ma + ''' )2> ''' + samtools_calmd_log_R
-		sam_call2 = line4 + line5 + line6
+		sam_call2 = '(samtools view -f 0x10 -b ' + input.bam + " | " + 'samtools calmd - ' + fasta_file + " -e > " + reverse_ma + ''' )2> ''' + samtools_calmd_log_R
 		os.system(sam_call2)
+		py_call2 = " ".join(["python", filterMA_py, "--input", reverse_ma, "--output", reverse_ma_py, "-c", min_aq, "-r", "yes"])
+		os.system(py_call2)
 		
 		# Link them together and clean up
-		os.system("cat " + forward_ma + " " + reverse_ma + " > " + output.master_awk_out1)
-		os.system("gzip " + samtools_calmd_log_F)
-		os.system("gzip " + samtools_calmd_log_R)
+		os.system("cat " + forward_ma_py + " " + reverse_ma_py + " > " + output.master_awk_out1)
+
 
 # Next, filter these against known SNPs
 rule filter_raw_awk:
 	input:
-		snp = outdir + "/temp/01_split/SNPs_" + "{chr}" + ".tsv",
 		master_awk_out1 = outdir + '/temp/02_frombam/rawFromBam_' + "{chr}" + ".txt",
 		read_barcode = outdir + "/temp/01_split/splitBam."+"{chr}"+".read_barcode.tsv.gz"
 	output:
@@ -88,8 +93,19 @@ rule filter_raw_awk:
 	run:
 		chr = wildcards.chr
 		
+		if(keep_positions != "none"):
+			keep_positions_file = outdir + "/temp/01_split/keep_" + "{chr}" + ".tsv"
+		else:
+			keep_positions_file = "none"
+			
+		if(remove_positions != "none"):
+			remove_positions_file = outdir + "/temp/01_split/remove_" + "{chr}" + ".tsv"
+		else:
+			remove_positions_file = "none"
+		
 		# Execute Rscript to merge (via read names) barcode tag with the SNP information
-		r_call1 = " ".join(["Rscript", intersect_reads_R, input.snp, input.master_awk_out1, input.read_barcode, output.master_awk_out2, output.readstats_log])
+		
+		r_call1 = " ".join(["Rscript", intersect_reads_edits_R, edit, input.master_awk_out1, input.read_barcode, keep_positions_file, remove_positions_file, output.master_awk_out2, output.readstats_log])
 		os.system(r_call1)
 
 
@@ -98,12 +114,12 @@ rule final_merge:
 	input:
 		processed_read_files = processed_read_files
 	output:
-		final_ase = outdir + "/" + name + ".edits.tsv.gz"
+		final_edits = outdir + "/" + name + ".edits.tsv.gz"
 	run:
-		final_ase_no_compress = outdir + "/" + name + ".ase.tsv"
+		final_no_compress = outdir + "/" + name + ".edits.tsv"
 		infiles = " ".join(processed_read_files)
-		os.system("cat " + infiles + " > " + final_ase_no_compress)
-		os.system("gzip " + final_ase_no_compress)
+		os.system("cat " + infiles + " > " + final_no_compress)
+		os.system("gzip " + final_no_compress)
 		
 # Final merge of the processed SNP files
 rule munge_qc:
@@ -112,5 +128,5 @@ rule munge_qc:
 	output:
 		final_qc1 = outdir + "/" + name + ".qcQuant.tsv"
 	run:
-		r_call_qc = " ".join(["Rscript", munge_qc_R, outdir + '/logs/readstats/' , output.final_qc1])
+		r_call_qc = " ".join(["Rscript", munge_qc_edits_R, outdir + '/logs/readstats/' , output.final_qc1])
 		os.system(r_call_qc)

@@ -71,6 +71,8 @@ class hisnpperEditProject():
 		self.fasta = fasta
 		self.name = name	
 		self.output = output
+		self.edit = edit
+
 		self.min_aq = str(min_aq)
 		self.barcode_tag = barcode_tag
 		self.keep_positions = keep_positions
@@ -91,6 +93,7 @@ class hisnpperEditProject():
 		yield 'fasta', self.fasta
 		yield 'name', self.name
 		yield 'output', self.output
+		yield 'edit', self.edit
 
 		yield 'min_aq', self.min_aq	
 		yield 'barcode_tag', self.barcode_tag		

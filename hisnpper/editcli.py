@@ -128,14 +128,13 @@ def main(bamfile, fasta, name, output,
 	# Setup snakemake logs
 	snake_stats = logs + "/" + p.name + ".snakemake_edits.stats"
 	snake_log = logs + "/" + p.name + ".snakemake_edits.log"
-
-	exit("exiting before snakemake")
 	
 	snake_log_out = ""
 	if not snake_stdout:
 		snake_log_out = ' &>' + snake_log 
 		
 	snakecmd_chr = 'snakemake --snakefile '+script_dir+'/snake/Snakefile.edits.txt --cores '+str(ncores)+' --config cfp="' + y_s + '" --stats '+snake_stats+snake_log_out
+	print(snakecmd_chr)
 	os.system(snakecmd_chr)
 
 	if keep_temp_files:
