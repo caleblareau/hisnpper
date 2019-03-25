@@ -23,11 +23,21 @@ if(FALSE){
   out_conf_file <- paste0(base, "/","out/temp/04_assign/assigned_chr1.txt")
 }
 
+
+if(FALSE){
+  base <- "/data/aryee/caleb/mESC_allele/fastq/test_hisnpper"
+  input_snp_file <- paste0(base, "/","bwa-new/temp/01_split/SNPs_1.tsv")
+  input_filtered_HQ_file <- paste0(base, "/","bwa-new/temp/03_processed/merged_1.txt")
+  out_conf_file <- paste0(base, "/","bwa-new/temp/04_assign/assigned_1.txt")
+}
+
+
 # Import SNPs parsed
 reads_dt <- fread(input_filtered_HQ_file, col.names = c("chr", "pos", "base", "BQ", "barcode", "read"))
 
 # Annotate SNP read with haplotype
 snp_dt <- fread(input_snp_file)
+colnames(snp_dt) <- c("chr", "start", colnames(snp_dt)[c(3,4)])
 m_snp_dt <- data.table(reshape2::melt(data.frame(snp_dt), id.vars = c("chr", "start")))
 colnames(m_snp_dt) <- c("chr", "pos", "haplotype", "base")
 merge_dt <- merge(reads_dt, m_snp_dt, by = c("chr", "pos", "base"))
