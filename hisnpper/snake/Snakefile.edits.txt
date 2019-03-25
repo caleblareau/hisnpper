@@ -70,7 +70,9 @@ rule pull_strand_bp_chr:
 		
 		# Generate the reverse strand calls by flipping the observed base
 		sam_call2 = '(samtools view -f 0x10 -b ' + input.bam + " | " + 'samtools calmd - ' + fasta_file + " -e > " + reverse_ma + ''' )2> ''' + samtools_calmd_log_R
+		os.system(sam_call2)
 		py_call2 = " ".join(["python", filterMA_py, "--input", reverse_ma, "--output", reverse_ma_py, "-c", min_aq, "-r", "yes"])
+		os.system(py_call2)
 		
 		# Link them together and clean up
 		os.system("cat " + forward_ma_py + " " + reverse_ma_py + " > " + output.master_awk_out1)

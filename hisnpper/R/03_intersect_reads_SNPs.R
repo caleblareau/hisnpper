@@ -38,8 +38,7 @@ if(FALSE){
 
 # Import chromosome for analysis
 reads_from_awk <- fread(input_fromAwk_file)
-colnames(reads_from_awk) <- c("chr", "bp", "pos_in_read", "BQletter", "base", "read_id")
-reads_from_awk[,pos := bp + pos_in_read -1]
+colnames(reads_from_awk) <- c("chr", "pos", "base", "BQletter",  "read_id")
 
 # Import and filter for SNPs
 snp_dt <- fread(input_snp_file)
@@ -65,12 +64,17 @@ read_barcode <- read_barcode[complete.cases(read_barcode)]
 N_reads_bc <- dim(read_barcode)[1]
 
 # Now merge
-mdf <- merge(filt_snps, read_barcode)
-N_reads_bc_SNP <- length(unique(mdf[["read_id"]]))
+if(all(read_barcode$barcode_id == "none")) {
+  mdf <- filt_snps[,c("chr", "pos", "base", "BQ", "read_id")]
+  N_reads_bc_SNP <- N_reads_bc
+} else {
+  mdf <- merge(filt_snps, read_barcode)
+  mdf <- mdf[,c("chr", "pos", "base", "BQ", "barcode_id", "read_id")]
+  N_reads_bc_SNP <- length(unique(mdf[["read_id"]]))
+}
 
 # Write out polished, processed data
-# TO DO: update BQ to BQ_score
-write.table(mdf[,c("chr", "pos", "base", "BQ", "barcode_id", "read_id")], file = out_filtered_HQ_file, 
+write.table(mdf, file = out_filtered_HQ_file, 
             row.names = FALSE, col.names = FALSE, sep = "\t", quote = FALSE)
 
 # Write out initial QC stats
