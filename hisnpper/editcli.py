@@ -60,7 +60,7 @@ def main(bamfile, fasta, name, output,
 	for l in pysam.idxstats(bamfile).split('\n'):
 		t = l.split("\t")
 		if(len(t) > 3):
-			if(float(t[2]) > 0 & len(t[0]) < 6): # gets rid of other contigs
+			if((float(t[2]) > 0) and (len(t[0]) < 6)): # gets rid of other contigs
 				bam_chrs.append(t[0])
 
 	# Make the project
