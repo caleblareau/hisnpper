@@ -36,16 +36,20 @@ reads_from_awk <- fread(input_fromAwk_file)
 colnames(reads_from_awk) <- c("read_id", "chr", "pos", "edit", "BQletter")
 
 # Import and filter for specific files
-if(keep_positions_file != "none"){
-  filt_dt <- fread(keep_positions_file)
-  boo <- reads_from_awk$pos %in% filt_dt[[2]]
-  reads_from_awk <- reads_from_awk[boo]
+if(keep_positions_file != "none" & file.exists(keep_positions_file)){
+  if(file.size(keep_positions_file) > 0){
+    filt_dt <- fread(keep_positions_file)
+    boo <- reads_from_awk$pos %in% filt_dt[[2]]
+    reads_from_awk <- reads_from_awk[boo]
+  }
 }
 
-if(remove_positions_file != "none"){
-  filt_dt <- fread(remove_positions_file)
-  boo <- reads_from_awk$pos %ni% filt_dt[[2]]
-  reads_from_awk <- reads_from_awk[boo]
+if(remove_positions_file != "none"& file.exists(remove_positions_file)){
+  if(file.size(remove_positions_file) > 0){
+    filt_dt <- fread(remove_positions_file)
+    boo <- reads_from_awk$pos %ni% filt_dt[[2]]
+    reads_from_awk <- reads_from_awk[boo]
+  }
 }
 
 # Filter out for the edit

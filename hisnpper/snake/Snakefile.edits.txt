@@ -92,12 +92,12 @@ rule filter_raw_awk:
 		chr = wildcards.chr
 		
 		if(keep_positions != "none"):
-			keep_positions_file = outdir + "/temp/01_split/keep_" + "{chr}" + ".tsv"
+			keep_positions_file = outdir + "/temp/01_split/keep_" + chr + ".tsv"
 		else:
 			keep_positions_file = "none"
 			
 		if(remove_positions != "none"):
-			remove_positions_file = outdir + "/temp/01_split/remove_" + "{chr}" + ".tsv"
+			remove_positions_file = outdir + "/temp/01_split/remove_" + chr + ".tsv"
 		else:
 			remove_positions_file = "none"
 		
