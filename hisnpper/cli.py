@@ -61,7 +61,7 @@ def main(mode, bamfile, snps, fasta, output,
 		for l in pysam.idxstats(bamfile).split('\n'):
 			t = l.split("\t")
 			if(len(t) > 3):
-				if(float(t[2]) > 0):
+				if(float(t[2]) > 20000): # filter out chrM
 					bam_chrs.append(t[0])
 	
 		# Make the project
