@@ -8,7 +8,7 @@ dependencies = ['click', 'pytest', 'snakemake', 'optparse-pretty', 'regex', 'pys
 
 setup(
     name='hisnpper',
-    version='0.2.0',
+    version='0.2.1',
     url='https://github.com/caleblareau/hisnpper',
     license='MIT',
     author='Caleb Lareau',
